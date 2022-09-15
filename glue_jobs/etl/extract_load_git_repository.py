@@ -1,11 +1,11 @@
 import logging
-import math
 import os
 import sys
 from datetime import date, timedelta
 from types import SimpleNamespace
-import re
+import json
 
+import boto3
 import requests
 
 logger = logging.getLogger("mbition")
@@ -30,185 +30,137 @@ def load_glue_contex():
 class RestAPI:
     """This class provides a wrapper around Request library which is used for RestAPI communication."""
 
-    def __init__(self, secret_name: str):
-        self.secret_name = secret_name
-        self.session = None
-        self.config = None
+    def __init__(self):
+        #  TODO: Get Token from Aws secrete manager
+        self.token = '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'
+        self.query_url = f"https://api.github.com/repos"
+        self.headers = {'Authorization': f'token {self.token}'}
 
-    def __enter__(self):
-        self.get_session()
-        return self
-
-    def get_session(self):
+    def get_int_request(self, owner, repo, start_date, page_size):
         logger.info("Getting Connection Info")
-        self.config = helper.get_aws_secret(self.secret_name)
+        query = f"{self.query_url}/{owner}/{repo}/issues"
+        params = {
+            "state": "all",
+            "since": f"{start_date}",
+            "sort": "updated",
+            "direction": "asc",
+            "per_page": f"{page_size}"
+        }
 
-        logger.info(f"Connecting to Rest API: {self.config.host}")
-        self.session = requests.Session()
-        self.session.auth = (self.config.username, self.config.password)
-        self.session.post(self.config.host)
-        return self
+        response = requests.get(query, headers=self.headers, params=params)
 
-    def get(self, query):
-        return self.session.get(f"{self.config.host}?{query}")
+        return response
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.session.close()
+    def get(self, url):
+        res = requests.get(f"{url}", headers=self.headers)
+        return res
 
 
-class ServiceMonitorLoader:
-    def __init__(
-        self, rest_api_secret: str, redshift_secret: str, redshift_schema: str, redshift_table: str, date: date
-    ):
-        self.redshift_secret = redshift_secret
-        self.redshift_schema = redshift_schema
-        self.redshift_table = redshift_table
-        self.date = date.strftime("%Y-%m-%d")
-        self.api = RestAPI(rest_api_secret).get_session()
-        self.page_size = 100
-
+class GitLoader:
+    def __init__(self,
+                 rest_api_secret: str,
+                 git_owner: str,
+                 git_repo: str
+                 ):
+        self.git_owner = git_owner
+        self.git_repo = git_repo
+        self.api = RestAPI()
+        self.s3_resource = boto3.resource("s3")
+        self.s3_client = boto3.client("s3")
         self.data = []
 
     def _get_query_from(self, page):
         return page * self.page_size
 
-    def _get_page_count(self):
-        resp = self.api.get(f"DateUpdatedStart={self.date}&PaginationSize=1")
-        total_count = resp.json()["TotalCount"]
-
-        return math.ceil(total_count / self.page_size)
-
     def _get_page(self, query_from: int):
         resp = self.api.get(f"DateUpdatedStart={self.date}&PaginationSize={self.page_size}&QueryFrom={query_from}")
         self.data += resp.json()["Results"]
 
-    def get_data(self):
-        page_count = self._get_page_count()
-        for page in range(page_count):
-            self._get_page(query_from=self._get_query_from(page))
+    def get_pull_requests_data(self, start_date: date, end_date: date, per_page: int):
+        start_date = start_date.strftime("%Y-%m-%d")
+        end_date = end_date.strftime("%Y-%m-%d")
 
-    def explode_array(self, array_key: str):
-        data = []
-        for row in self.data:
-            array = row[array_key]
+        next_page = False
+        last_page = False
 
-            if len(array) == 1:
-                logging.warning(f"API message does not have valid payload {row}")
-                continue
+        init_resp = self.create_init_request(per_page)
+        self.get_pull_request(init_resp, self.data, start_date)
 
-            if array[1]["QuestionName"] != "Compass Code":
-                raise Exception("API response does not match expected schema")
+        last_page, next_page = self.get_pagination_info(init_resp)
+        resp = init_resp
 
-            # Remove the array from the dictionary
-            row.pop(array_key, None)
+        #  iterate till last page
+        while next_page:
+            if 'next' in resp.links:
+                print(resp.links['next']['url'])
+                resp = self.api.get(resp.links['next']['url'])
+                self.get_pull_request(resp, self.data, end_date)
+                last_page, next_page = self.get_pagination_info(resp)
 
-            # Add the attay to the dictionary as new keys
-            data.append({**row, **array[0], "CompassUnitId": array[1]["Caption"]})
+    @staticmethod
+    def get_pull_request(results, filter_list, end_date_day):
 
-        self.data = data
+        # List object
+        _results = results.json()
 
-    def truncate_staging_table(self):
-        with helper.RedshiftHandler(self.redshift_secret) as rs:
-            rs.execute(f'TRUNCATE "{self.redshift_schema}"."{self.redshift_table}";')
+        # get only pull request type
+        # get only with specific date in updated_at
+        for result in _results:
+            if 'pull_request' in result and end_date_day in result['updated_at']:
+                filter_list.append(result)
 
-    def load_staging_table(self):
-        # Get column order from Redshift
-        with helper.RedshiftHandler(self.redshift_secret) as rs:
-            table_schema = rs.get_table_schema(schema=self.redshift_schema, table=self.redshift_table)
-            index_map = {calue: idx for idx, calue in enumerate(table_schema.keys())}
+        return filter_list
 
-        # Generate values section
-        values = []
-        for row in self.data:
-            # Sort the dictionary key based on redshift table schema
-            sorted_row = dict(sorted(row.items(), key=lambda x: index_map[x[0].lower()]))
-            string_row = str(tuple((value) for value in sorted_row.values()))
-            values.append(string_row.replace("None", "null"))
+    def create_init_request(self, per_page):
+        resp = self.api.get_int_request(self.git_owner, self.git_repo, start_date, per_page)
+        return resp
 
-        # Load data into redshift
-        with helper.RedshiftHandler(self.redshift_secret) as rs:
-            rs.execute(f'INSERT INTO "{self.redshift_schema}"."{self.redshift_table}" VALUES {", ".join(values)};')
+    @staticmethod
+    def get_pagination_info(resp):
+        last_page = False
+        next_page = False
 
+        if 'last' in resp.links:
+            last_page = True
+        if 'next' in resp.links:
+            next_page = True
 
-def get_pullRequest(page,filter_list, end_date_day):
+        return last_page, next_page
 
+    def save_result_to_file(self, owner, repo,start_date, type='pull_request'):
+        file_name = f'{type}_{owner}_{repo}_{start_date}.json'
+        with open(file_name, 'w', encoding='UTF-8') as fout:
+            json.dump(self.data, fout)
+        return file_name
 
-    # List object
-    list_r = r.json()
+    def save_result_to_s3(self, owner, repo, file_name , start_date, type='pull_request'):
 
-    # get only pull request
-    for l in list_r:
-        if 'pull_request' in l and end_date_day in l['updated_at']:
-            filter_list.append(l)
-
-
-    return filter_list
-
-
-
-def simple ():
-    import requests
-    import os
-    from pprint import pprint
-    import json
-
-    token = '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'
-    owner = "grafana"
-    repo = "grafana"
-    query_url = f"https://api.github.com/repos/{owner}/{repo}/issues"
-    'YYYY-MM-DDTHH:MM:SSZ'
-
-    start_date = '2022-09-10T00:00:00'
-    end_date = '2022-09-13T23:59:59'
-    end_date_day = '2022-09-13'
-
-    params = {
-        "state": "all",
-        "since": f"{start_date}",
-        "sort":"updated",
-        "direction":"asc"
-    }
-    headers = {'Authorization': f'token {token}'}
-    r = requests.get(query_url, headers=headers, params=params)
-
-    filter_list = []
-
-    # if 'next' in r.links:
-    #     page_next = r.links['next']
-
-    if 'last' in r.links:
-        last=r.links['last']
-        number_of_pages=re.search(r'&page=(\d+)', last['url']).group(1)
-        # {'url': 'https://api.github.com/repositories/15111821/issues?state=all&since=2022-09-10T00%3A00%3A00&sort=updated&direction=asc&page=11', 'rel': 'last'}
-        print (last)
-
-
-
-    print (1)
+        bucket = 'git-analytics'
+        key = f'{type}/{owner}/{repo}/date={start_date}/{file_name}'
+        with open(file_name, 'rb') as data:
+            self.s3_client.upload_fileobj(data, bucket, key)
 
 
 if __name__ == "__main__":
 
-    simple()
-    print (1)
+    start_date = date(2022, 9, 14)
+    end_date = date(2022, 9, 14)
+    git_owner = 'grafana'
+    git_repo = 'grafana'
 
     args = load_glue_contex()
 
-    if args.FullLoad == "True":
-        date = date(2021, 8, 1)
-        logger.info(f"Full load start_date:{date}")
-    else:
-        date = date.today() - timedelta(days=5)
-        logger.info(f"Incremental load start_date:{date}")
-
-    service_monitor_loader = ServiceMonitorLoader(
+    git_loader = GitLoader(
         rest_api_secret=args.ServiceMonitorSecret,
-        redshift_secret=args.RedshiftSecret,
-        redshift_schema="stg",
-        redshift_table="fct_nps_servicemonitor",
-        date=date,
+        git_owner=git_owner,
+        git_repo= git_repo
     )
-    service_monitor_loader.get_data()
-    service_monitor_loader.explode_array(array_key="Responses")
-    service_monitor_loader.truncate_staging_table()
-    service_monitor_loader.load_staging_table()
+
+    git_loader.get_pull_requests_data(start_date=start_date,
+                                      end_date=end_date,
+                                      per_page=100)
+
+    file_name = git_loader.save_result_to_file(git_owner, git_repo, start_date)
+    git_loader.save_result_to_s3(git_owner, git_repo, file_name, start_date)
+
+
