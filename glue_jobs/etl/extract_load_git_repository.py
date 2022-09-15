@@ -1,7 +1,8 @@
+import csv
 import logging
 import os
 import sys
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from types import SimpleNamespace
 import json
 
@@ -11,6 +12,7 @@ import requests
 logger = logging.getLogger("mbition")
 logger.setLevel(logging.INFO)
 logger.debug("main message")
+
 
 def load_glue_contex():
     if "GLUE_PYTHON_VERSION" in os.environ:
@@ -25,6 +27,28 @@ def load_glue_contex():
         }
 
     return SimpleNamespace(**args)
+
+
+class PullRequest:
+
+    def __init__(self, pull_request_id,
+                 number,
+                 title,
+                 user_id,
+                 login_name,
+                 state,
+                 created,
+                 closed,
+                 merged):
+        self.pull_request_id = pull_request_id
+        self.number = number
+        self.title = title
+        self.user_id = user_id
+        self.login_name = login_name
+        self.state = state
+        self.created = created
+        self.closed = closed
+        self.merged = merged
 
 
 class RestAPI:
@@ -67,7 +91,9 @@ class GitLoader:
         self.api = RestAPI()
         self.s3_resource = boto3.resource("s3")
         self.s3_client = boto3.client("s3")
-        self.data = []
+        self.date_format = "%Y-%m-%dT%H:%M:%SZ"
+        self.pull_request_raw_data = []
+        self.pull_request_processed_data = []
 
     def _get_query_from(self, page):
         return page * self.page_size
@@ -84,7 +110,7 @@ class GitLoader:
         last_page = False
 
         init_resp = self.create_init_request(per_page)
-        self.get_pull_request(init_resp, self.data, start_date)
+        self.get_pull_request(init_resp, self.pull_request_raw_data, start_date)
 
         last_page, next_page = self.get_pagination_info(init_resp)
         resp = init_resp
@@ -94,7 +120,7 @@ class GitLoader:
             if 'next' in resp.links:
                 print(resp.links['next']['url'])
                 resp = self.api.get(resp.links['next']['url'])
-                self.get_pull_request(resp, self.data, end_date)
+                self.get_pull_request(resp, self.pull_request_raw_data, end_date)
                 last_page, next_page = self.get_pagination_info(resp)
 
     @staticmethod
@@ -127,24 +153,83 @@ class GitLoader:
 
         return last_page, next_page
 
-    def save_result_to_file(self, owner, repo,start_date, type='pull_request'):
-        file_name = f'{type}_{owner}_{repo}_{start_date}.json'
-        with open(file_name, 'w', encoding='UTF-8') as fout:
-            json.dump(self.data, fout)
+    def save_result_to_file(self, layer, owner, repo, start_date, github_type='pull_request'):
+
+        # TODO: onliner here
+        if 'raw' in layer:
+            file_type = 'json'
+        else:
+            file_type = 'csv'
+        file_name = f'{layer}_{github_type}_{owner}_{repo}_{start_date}.{file_type}'
+        with open(file_name, 'w', encoding='UTF-8') as out:
+            if 'raw' in layer:
+                json.dump(self.pull_request_raw_data, out)
+            elif 'processed' in layer:
+                writer = csv.writer(out, delimiter=';')
+                writer.writerows(self.pull_request_processed_data)
         return file_name
 
-    def save_result_to_s3(self, owner, repo, file_name , start_date, type='pull_request'):
+    def save_result_to_s3(self, layer, owner, repo, file_name, start_date, github_type='pull_request'):
 
         bucket = 'git-analytics'
-        key = f'{type}/{owner}/{repo}/date={start_date}/{file_name}'
+        key = f'{layer}/{github_type}/owner={owner}/repo={repo}/date={start_date}/{file_name}'
         with open(file_name, 'rb') as data:
             self.s3_client.upload_fileobj(data, bucket, key)
+
+    def subtract_dates(self, start_date, end_date):
+        seconds = 0
+        if start_date is None or end_date is None:
+            return seconds
+        else:
+            if isinstance(start_date, str):
+                start_date = datetime.strptime(start_date, self.date_format)
+            if isinstance(end_date, str):
+                end_date = datetime.strptime(end_date, self.date_format)
+            delta = (end_date - start_date)
+            seconds = delta.seconds  # 86400 is the number of Seconds
+            return seconds
+
+    def build_dataset(self, start_date):
+
+        for pull_request in self.pull_request_raw_data:
+            pull_request_id = pull_request['id'],
+            number = pull_request['number'],
+            title = pull_request['title'],
+            user_id = pull_request['user']['id'],
+            login_name = pull_request['user']['login'],
+            state = pull_request['state'],
+            created = pull_request['created_at'],
+            closed = pull_request['closed_at'],
+            merged = pull_request['pull_request']['merged_at']
+
+            time_open_to_merge_seconds = self.subtract_dates(created[0], merged)
+            time_open = self.subtract_dates(created[0], start_date)
+
+            # optional matrix
+            # first_commit_time - pull from commits API call
+            # first_comment - pull from commits API call
+            # cycle_time = closed - first_commit_time
+            # time_to_open = created -  first_commit_time
+
+            self.pull_request_processed_data.append([pull_request_id[0],
+                                                    number[0],
+                                                    title[0],
+                                                    user_id[0],
+                                                    login_name[0],
+                                                    state[0],
+                                                    created[0],
+                                                    closed[0],
+                                                    merged,
+                                                    time_open_to_merge_seconds,
+                                                    time_open])
+
+        print(1)
 
 
 if __name__ == "__main__":
 
     start_date = date(2022, 9, 14)
-    end_date = date(2022, 9, 14)
+    end_date = date(2022, 9, 13)
     git_owner = 'grafana'
     git_repo = 'grafana'
 
@@ -153,14 +238,16 @@ if __name__ == "__main__":
     git_loader = GitLoader(
         rest_api_secret=args.ServiceMonitorSecret,
         git_owner=git_owner,
-        git_repo= git_repo
+        git_repo=git_repo
     )
 
     git_loader.get_pull_requests_data(start_date=start_date,
                                       end_date=end_date,
                                       per_page=100)
 
-    file_name = git_loader.save_result_to_file(git_owner, git_repo, start_date)
-    git_loader.save_result_to_s3(git_owner, git_repo, file_name, start_date)
+    file_name = git_loader.save_result_to_file("raw", git_owner, git_repo, start_date)
+    git_loader.save_result_to_s3("raw", git_owner, git_repo, file_name, start_date)
 
-
+    git_loader.build_dataset(start_date.strftime(git_loader.date_format))
+    file_name = git_loader.save_result_to_file("processed", git_owner, git_repo, start_date)
+    git_loader.save_result_to_s3("processed", git_owner, git_repo, file_name, start_date)
