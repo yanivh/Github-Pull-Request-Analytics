@@ -48,8 +48,15 @@ Deploy resources to cloud
 "dev": cdk.Environment(account="177806169472", region="eu-west-2"),
 "prod": cdk.Environment(account="177806169472", region="us-west-1"),
 </pre>
+2. run : cdk deploy -c env=dev
 
-- **Solution Architecture :**
+Run Step Function
+1. login into aws console 
+2. navigate to Step Function service 
+3. search for function name : **DE-SFN-GITHUB-DEV-PULL_REQUEST_LOADER**
+4. start new execution
+
+## Solution Architecture 
 
 ![alt text](https://github.com/yanivh/Github-Pull-Request-Analytics/blob/2fd8a2fdc3c02b90d697ed6b8474c0c28fbe441d/Solution_Architecture_diagram.jpeg)
 
