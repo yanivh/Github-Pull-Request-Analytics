@@ -60,6 +60,12 @@ LOCATION
   's3://de-github-analytics-dev/processed/pull_request/'
 </pre>
 
+SQL resources
+<pre>
+ glue_jobs/SQL/DDL -  Table schema - as extracted from glue crawler
+ glue_jobs/SQL/DDM -  CREATE VIEW sql statements
+</pre>
+
 - **serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
 
 ## Get started
