@@ -8,9 +8,9 @@ For this reason, **"Issues"** endpoints may return both issues and pull requests
 You can identify pull requests by the **pull_request** key.
 using TokenAPI is store in **AWs secret manger** called **Secretgithubapi**
 
-- **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations  
+- **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations 
+<br> <br> **Cloud resources** :
 <pre>
- Github-Analytics -IAC
  IAC/S3 -  datalake storage
  IAC/glue/jobs - extract load , execute a python script
  IAC/glue/core - create IAM role's
@@ -60,7 +60,7 @@ LOCATION
   's3://de-github-analytics-dev/processed/pull_request/'
 </pre>
 
-SQL resources
+**SQL resources**
 <pre>
  glue_jobs/SQL/DDL -  Table schema - as extracted from glue crawler
  glue_jobs/SQL/DDM -  CREATE VIEW sql statements
