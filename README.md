@@ -32,7 +32,7 @@ using TokenAPI is store in **AWs secret manger** called **Secretgithubapi**
 </pre>
 
 
-- **Query engine.:** Amazon  **Athena** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.Athena integrated with **AWS Glue Data Catalog**, allowing you to create a unified metadata repository across various services, crawl data sources to discover schemas and populate your Catalog with new and modified table 
+- **Query engine.:** Amazon  **Athena** has a serverless architecture that automatically scales lots of users without the need to setup, configure, or manage your own servers.Athena integrated with **AWS Glue Data Catalog**, allowing you to create a unified metadata repository across various services, crawl data sources to discover schemas and populate your Catalog with new and modified table.
 and **partition** definitions, and maintain **schema versioning**
 
 <pre>
