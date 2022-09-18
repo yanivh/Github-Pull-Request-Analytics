@@ -3,10 +3,10 @@
 GitHub Anlytics, pull new data about the Grafana repository into a database.
 
 - **GitHub API:** using GitHub's REST API v3.
-with knowing that every pull request an issue, but not every issue is a pull request. 
+with knowing that every pull request is an issue, but not every issue is a pull request. 
 For this reason, **"Issues"** endpoints may return both issues and pull requests in the response. 
 You can identify pull requests by the **pull_request** key.
-TokenAPI is store in **AWs secert manger** called **Secretgithubapi**
+using TokenAPI is store in **AWs secret manger** called **Secretgithubapi**
 
 - **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations  
 <pre>
@@ -34,6 +34,31 @@ TokenAPI is store in **AWs secert manger** called **Secretgithubapi**
 
 - **Query engine.:** Amazon  **Athena** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.Athena integrated with **AWS Glue Data Catalog**, allowing you to create a unified metadata repository across various services, crawl data sources to discover schemas and populate your Catalog with new and modified table 
 and **partition** definitions, and maintain **schema versioning**
+
+<pre>
+CREATE EXTERNAL TABLE `pull_requests`(
+  `id` bigint,
+  `number` bigint,
+  `title` string,
+  `user_id` bigint,
+  `login_name` string,
+  `state` string,
+  `create_at` string,
+  `closed_at` string,
+  `merged_at` string,
+  `updated_at` string,
+  `time_open_to_merge_seconds` bigint,
+  `time_cretead_to_update_seconds` bigint)
+PARTITIONED BY (
+  `owner` string,
+  `repo` string,
+  `date` string)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\;'
+STORED AS INPUTFORMAT
+LOCATION
+  's3://de-github-analytics-dev/processed/pull_request/'
+</pre>
 
 - **serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
 
