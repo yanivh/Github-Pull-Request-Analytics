@@ -6,6 +6,7 @@ GitHub Anlytics, pull new data about the Grafana repository into a database.
 with knowing that every pull request an issue, but not every issue is a pull request. 
 For this reason, **"Issues"** endpoints may return both issues and pull requests in the response. 
 You can identify pull requests by the **pull_request** key.
+TokenAPI is store in **AWs secert manger** called **Secretgithubapi**
 
 - **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations  
 <pre>
@@ -16,9 +17,23 @@ You can identify pull requests by the **pull_request** key.
  IAC/step_function - orcastrate the data ingestion.
 </pre>
 
-- **Extract Load:** Amazon **Glue** has a serverless architecture that been used in this project for **Extract** and **load** and **catalog** data.
+- **Extract Load:** Amazon **Glue** has a serverless architecture that been used in this project for **Extract** and **load** and **catalog** data. in addtion give the option to paramertize the Job , include new owner , new repo , and specific date.
+<pre>
+ start_date = date(2022, 9, 11)
+ git_owner = 'grafana'
+ git_repo = 'grafana'
 
-- **Query engine.:** Amazon  **Athena** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.Athena integrated with **AWS Glue Data Catalog**, allowing you to create a unified metadata repository across various services, crawl data sources to discover schemas and populate your Catalog with new and modified table and **partition ** definitions, and maintain schema versioning
+ args = {
+         "GithubApiSecret": "Secretgithubapi",
+         "start_date": f"{str(start_date)}",
+         "GitOwner": f"{git_owner}",
+         "GitRepo": f"{git_repo}",
+        }
+</pre>
+
+
+- **Query engine.:** Amazon  **Athena** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.Athena integrated with **AWS Glue Data Catalog**, allowing you to create a unified metadata repository across various services, crawl data sources to discover schemas and populate your Catalog with new and modified table 
+and **partition** definitions, and maintain **schema versioning**
 
 - **serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
 
