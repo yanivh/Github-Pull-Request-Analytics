@@ -1,4 +1,4 @@
-CREATE EXTERNAL TABLE `pull_request`(
+CREATE EXTERNAL TABLE `pull_requests`(
   `id` bigint,
   `number` bigint,
   `title` string,
@@ -22,7 +22,7 @@ STORED AS INPUTFORMAT
 OUTPUTFORMAT
   'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
 LOCATION
-  's3://git-analytics/processed/pull_request/'
+  's3://de-github-analytics-dev/processed/pull_request/'
 TBLPROPERTIES (
   'CrawlerSchemaDeserializerVersion'='1.0',
   'CrawlerSchemaSerializerVersion'='1.0',
