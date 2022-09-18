@@ -2,7 +2,11 @@
 
 GitHub Anlytics, pull new data about the Grafana repository into a database.
 
-- **Visualizations:**
+- **GitHub API:** using GitHub's REST API v3.
+with knowing that every pull request an issue, but not every issue is a pull request. 
+For this reason, **"Issues"** endpoints may return both issues and pull requests in the response. 
+You can identify pull requests by the **pull_request** key.
+
 - **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations  
 <pre>
  Github-Analytics -IAC
@@ -12,11 +16,11 @@ GitHub Anlytics, pull new data about the Grafana repository into a database.
  IAC/step_function - orcastrate the data ingestion.
 </pre>
 
-- **GitHub API:** using GitHub's REST API v3.
-with knowing that every pull request an issue, but not every issue is a pull request. 
-For this reason, "Issues" endpoints may return both issues and pull requests in the response. 
-You can identify pull requests by the pull_request key. Be aware that the id of a pull request returned from "Issues" endpoints will be an issue id. To find out the pull request id, use the "List pull requests" endpoint.
+- **Extract Load:** Amazon **Glue** has a serverless architecture that been used in this project for **Extract** and **load** and **catalog** data.
 
+- **Query engine.:** Amazon  **Athena** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.Athena integrated with **AWS Glue Data Catalog**, allowing you to create a unified metadata repository across various services, crawl data sources to discover schemas and populate your Catalog with new and modified table and **partition ** definitions, and maintain schema versioning
+
+- **serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
 
 ## Get started
 Setup local environment
@@ -48,4 +52,10 @@ Deploy resources to cloud
 - **Solution Architecture :**
 
 ![alt text](https://github.com/yanivh/Github-Pull-Request-Analytics/blob/2fd8a2fdc3c02b90d697ed6b8474c0c28fbe441d/Solution_Architecture_diagram.jpeg)
+
+- **Visualization :**
+
+![alt text](https://github.com/yanivh/Github-Pull-Request-Analytics/blob/4085e7f8fca2c5137a7fd69d34abd482ea5eca7e/Visualization/viz_1.png)
+![alt text](https://github.com/yanivh/Github-Pull-Request-Analytics/blob/4085e7f8fca2c5137a7fd69d34abd482ea5eca7e/Visualization/viz_2.png)
+![alt text](https://github.com/yanivh/Github-Pull-Request-Analytics/blob/4085e7f8fca2c5137a7fd69d34abd482ea5eca7e/Visualization/viz_3.png)
 
