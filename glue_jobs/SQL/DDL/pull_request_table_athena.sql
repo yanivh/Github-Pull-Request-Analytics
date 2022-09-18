@@ -1,4 +1,4 @@
-CREATE EXTERNAL TABLE `pull_request_pull_request`(
+CREATE EXTERNAL TABLE `pull_request`(
   `id` bigint,
   `number` bigint,
   `title` string,
@@ -8,8 +8,9 @@ CREATE EXTERNAL TABLE `pull_request_pull_request`(
   `create_at` string,
   `closed_at` string,
   `merged_at` string,
-  `open_to_merge_seconds` bigint,
-  `time_open__seconds` bigint)
+  `updated_at` string,
+  `time_open_to_merge_seconds` bigint,
+  `time_cretead_to_update_seconds` bigint)
 PARTITIONED BY (
   `owner` string,
   `repo` string,

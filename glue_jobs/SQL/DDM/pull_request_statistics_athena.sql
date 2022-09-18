@@ -1,11 +1,11 @@
 -- see the median pull request closure times for different dates
 select
-       approx_percentile(open_to_merge_seconds,0.5)/60 as median_minutes,
-       sum (open_to_merge_seconds)/60 as minutes,
-       count(*) as _count,
+       approx_percentile(time_open_to_merge_seconds,0.5)/60 as minutes_median,
+       sum (time_open_to_merge_seconds)/60 as minutes_sum,
+       count(*) as pr_count,
        state,
        date
-from pull_request_pull_request
+from pull_request
 where state ='closed'
 group by state, date
 
@@ -13,14 +13,14 @@ group by state, date
 -- open ticket per days
 SELECT state,
         date,
-        (CAST(open_to_merge_seconds AS double) / 86400) days_open_merge,
-        (CAST("time_open__seconds"  AS double) / 86400) days_time_open,
-        "closed_at",
-        "create_at",
-        "merged_at"
-FROM "git"."pull_request_pull_request"
+        sum ((CAST(time_cretead_to_update_seconds  AS double) / 86400)) as days_time_open
+        -- ,"create_at"
+FROM "git"."pull_request"
 where state ='open'
-order by days_open_merge asc ;
+group by date,state
+order by days_time_open asc
+;
+
 
 --  add new partitions
 MSCK REPAIR TABLE `pull_request_pull_request`;

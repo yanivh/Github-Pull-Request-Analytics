@@ -18,18 +18,24 @@ def load_glue_contex():
     if "GLUE_PYTHON_VERSION" in os.environ:
         from awsglue.utils import getResolvedOptions
 
-        args = getResolvedOptions(sys.argv, ["ServiceMonitorSecret", "RedshiftSecret", "FullLoad"])
+        args = getResolvedOptions(sys.argv, ["GithubApiSecret", "start_date", "GitOwner", "GitRepo"])
     else:
+        start_date = date(2022, 9, 15)
+        git_owner = 'grafana'
+        git_repo = 'grafana'
+
         args = {
-            "ServiceMonitorSecret": "ServiceMonitorSecret",
-            "RedshiftSecret": "DE-SEC-C9-DEV-REDSHIFT_CLUSTER",
-            "FullLoad": "False",
+            "GithubApiSecret": "Secretgithubapi",
+            "start_date": f"{str(start_date)}",
+            "GitOwner": f"{git_owner}",
+            "GitRepo": f"{git_repo}",
         }
 
     return SimpleNamespace(**args)
 
 
 class PullRequest:
+    # TODO : store result in PullRequest class
 
     def __init__(self, pull_request_id,
                  number,
@@ -54,9 +60,9 @@ class PullRequest:
 class RestAPI:
     """This class provides a wrapper around Request library which is used for RestAPI communication."""
 
-    def __init__(self):
-        #  TODO: Get Token from Aws secrete manager
-        self.token = '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'
+    def __init__(self , token):
+        # token from Aws secrete manager
+        self.token = token
         self.query_url = f"https://api.github.com/repos"
         self.headers = {'Authorization': f'token {self.token}'}
 
@@ -84,16 +90,23 @@ class GitLoader:
     def __init__(self,
                  rest_api_secret: str,
                  git_owner: str,
-                 git_repo: str
+                 git_repo: str,
                  ):
         self.git_owner = git_owner
         self.git_repo = git_repo
-        self.api = RestAPI()
-        self.s3_resource = boto3.resource("s3")
+        self.api_token = self.get_aws_secret(rest_api_secret)
+        self.api = RestAPI(self.api_token.token)
         self.s3_client = boto3.client("s3")
         self.date_format = "%Y-%m-%dT%H:%M:%SZ"
         self.pull_request_raw_data = []
         self.pull_request_processed_data = []
+
+    def get_aws_secret(self,secret_name):
+        logger.info(f"Secret is: {secret_name}")
+
+        client = boto3.client("secretsmanager")
+        secret = client.get_secret_value(SecretId=secret_name)
+        return json.loads(secret["SecretString"], object_hook=lambda d: SimpleNamespace(**d))
 
     def _get_query_from(self, page):
         return page * self.page_size
@@ -102,15 +115,14 @@ class GitLoader:
         resp = self.api.get(f"DateUpdatedStart={self.date}&PaginationSize={self.page_size}&QueryFrom={query_from}")
         self.data += resp.json()["Results"]
 
-    def get_pull_requests_data(self, start_date: date, end_date: date, per_page: int):
-        start_date = start_date.strftime("%Y-%m-%d")
-        end_date = end_date.strftime("%Y-%m-%d")
+    def get_pull_requests_data(self, start_date: date, per_page: int):
+        # start_date = start_date.strftime("%Y-%m-%d")
 
         next_page = False
         last_page = False
 
-        init_resp = self.create_init_request(per_page)
-        self.get_pull_request(init_resp, self.pull_request_raw_data, start_date)
+        init_resp = self.create_init_request(per_page,start_date)
+        self.get_pull_requests(init_resp, self.pull_request_raw_data, start_date)
 
         last_page, next_page = self.get_pagination_info(init_resp)
         resp = init_resp
@@ -120,11 +132,11 @@ class GitLoader:
             if 'next' in resp.links:
                 print(resp.links['next']['url'])
                 resp = self.api.get(resp.links['next']['url'])
-                self.get_pull_request(resp, self.pull_request_raw_data, end_date)
+                self.get_pull_requests(resp, self.pull_request_raw_data, start_date)
                 last_page, next_page = self.get_pagination_info(resp)
 
     @staticmethod
-    def get_pull_request(results, filter_list, end_date_day):
+    def get_pull_requests(results, filter_list, start_date):
 
         # List object
         _results = results.json()
@@ -132,12 +144,12 @@ class GitLoader:
         # get only pull request type
         # get only with specific date in updated_at
         for result in _results:
-            if 'pull_request' in result and end_date_day in result['updated_at']:
+            if 'pull_request' in result and start_date in result['updated_at']:
                 filter_list.append(result)
 
         return filter_list
 
-    def create_init_request(self, per_page):
+    def create_init_request(self, per_page, start_date,):
         resp = self.api.get_int_request(self.git_owner, self.git_repo, start_date, per_page)
         return resp
 
@@ -189,7 +201,7 @@ class GitLoader:
             seconds = delta.seconds  # 86400 is the number of Seconds
             return seconds
 
-    def build_dataset(self, start_date):
+    def build_dataset(self):
 
         for pull_request in self.pull_request_raw_data:
             pull_request_id = pull_request['id'],
@@ -199,11 +211,12 @@ class GitLoader:
             login_name = pull_request['user']['login'],
             state = pull_request['state'],
             created = pull_request['created_at'],
+            updated = pull_request['updated_at'],
             closed = pull_request['closed_at'],
             merged = pull_request['pull_request']['merged_at']
 
             time_open_to_merge_seconds = self.subtract_dates(created[0], merged)
-            time_open = self.subtract_dates(created[0], start_date)
+            time_cretead_to_update_seconds = self.subtract_dates(created[0], updated[0])
 
             # optional matrix
             # first_commit_time - pull from commits API call
@@ -219,35 +232,35 @@ class GitLoader:
                                                     state[0],
                                                     created[0],
                                                     closed[0],
+                                                    updated[0],
                                                     merged,
                                                     time_open_to_merge_seconds,
-                                                    time_open])
+                                                    time_cretead_to_update_seconds])
 
         print(1)
 
 
 if __name__ == "__main__":
 
-    start_date = date(2022, 9, 14)
-    end_date = date(2022, 9, 13)
-    git_owner = 'grafana'
-    git_repo = 'grafana'
+    # start_date = date(2022, 9, 14)
+    # end_date = date(2022, 9, 13)
+    # git_owner = 'grafana'
+    # git_repo = 'grafana'
 
     args = load_glue_contex()
 
+    # args : "GithubApiSecret", "start_date", "GitOwner", "GitRepo"
     git_loader = GitLoader(
-        rest_api_secret=args.ServiceMonitorSecret,
-        git_owner=git_owner,
-        git_repo=git_repo
+        rest_api_secret=args.GithubApiSecret,
+        git_owner=args.GitOwner,
+        git_repo=args.GitRepo
     )
-
-    git_loader.get_pull_requests_data(start_date=start_date,
-                                      end_date=end_date,
+    git_loader.get_pull_requests_data(start_date=args.start_date,
                                       per_page=100)
 
-    file_name = git_loader.save_result_to_file("raw", git_owner, git_repo, start_date)
-    git_loader.save_result_to_s3("raw", git_owner, git_repo, file_name, start_date)
+    file_name = git_loader.save_result_to_file("raw", args.GitOwner, args.GitRepo, args.start_date)
+    git_loader.save_result_to_s3("raw", args.GitOwner, args.GitRepo, file_name, args.start_date)
 
-    git_loader.build_dataset(start_date.strftime(git_loader.date_format))
-    file_name = git_loader.save_result_to_file("processed", git_owner, git_repo, start_date)
-    git_loader.save_result_to_s3("processed", git_owner, git_repo, file_name, start_date)
+    git_loader.build_dataset()
+    file_name = git_loader.save_result_to_file("processed", args.GitOwner, args.GitRepo, args.start_date)
+    git_loader.save_result_to_s3("processed", args.GitOwner, args.GitRepo, file_name, args.start_date)
