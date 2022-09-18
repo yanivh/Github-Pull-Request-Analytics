@@ -2,10 +2,8 @@
 
 GitHub Anlytics, pull new data about the Grafana repository into a database.
 
-- **GitHub API:** using GitHub's REST API v3.
-solution pulled data by query againt **"Issues"** endpoints, with knowing that every pull request is an issue, but not every issue is a pull request.For this reason, **"Issues"** endpoints may return both issues and pull requests in the response. <br>
-solution identify pull requests by the **pull_request** key.<br>
-using TokenAPI is store in **AWs secret manger** called **Secretgithubapi**
+- **GitHub API:** using GitHub's REST API v3, solution pulled data by query againt **"Issues"** endpoints, **"Issues"** endpoints may return both issues and pull requests in the response, solution identify pull requests by the **pull_request** key.<br>
+solution use and TokenAPI that store in **AWs secret manger** called **Secretgithubapi**
 
 - **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations 
 <br> <br> **Cloud resources** :
