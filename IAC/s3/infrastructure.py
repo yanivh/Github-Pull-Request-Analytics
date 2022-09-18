@@ -11,7 +11,7 @@ class S3(Construct):
         self.bucket_data = s3.Bucket(
             self,
             "DataBucket",
-            bucket_name=f"DE-github-analytics-{self.env}-DATALAKE".lower(),
+            bucket_name=f"DE-github-analytics-{self.env}".lower(),
             encryption=s3.BucketEncryption.S3_MANAGED,
             access_control=s3.BucketAccessControl.PRIVATE,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,

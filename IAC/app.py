@@ -33,8 +33,8 @@ class GitHubAnalytics(Stack):
 def get_env(app: cdk.App):
     aws_env = {
         "snd": cdk.Environment(account="177806169472", region="eu-west-1"),
-        "dev": cdk.Environment(account="177806169472", region="eu-central-1"),
-        "prod": cdk.Environment(account="177806169472", region="eu-central-1"),
+        "dev": cdk.Environment(account="177806169472", region="eu-west-1"),
+        "prod": cdk.Environment(account="177806169472", region="eu-west-1"),
     }
 
     env = app.node.try_get_context("env")

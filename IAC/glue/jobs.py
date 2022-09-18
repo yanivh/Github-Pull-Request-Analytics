@@ -39,9 +39,9 @@ class GlueJobs(Construct):
             max_concurrent_runs=1,
             default_arguments={
                 "--class": "GlueApp",
-                "--Github_api_Secret": "Secretgithubapi",
-                "--start_date": "False",
-                "--owner": "grafana",
-                "--repo": "grafana",
+                "--GithubApiSecret": "Secretgithubapi",
+                "--start_date": "Today",
+                "--GitOwner": "grafana",
+                "--GitRepo": "grafana",
             }
         )
