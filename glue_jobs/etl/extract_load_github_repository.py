@@ -19,8 +19,14 @@ def load_glue_contex():
         from awsglue.utils import getResolvedOptions
 
         args = getResolvedOptions(sys.argv, ["GithubApiSecret", "start_date", "GitOwner", "GitRepo"])
+
+        if args['start_date'] == 'Today':
+            args['start_date'] = datetime.today().strftime('%Y-%m-%d')
+        elif args['start_date'] == 'Yesterday':
+                yesterday = datetime.today() - timedelta(days=1)
+                args['start_date'] = yesterday.strftime('%Y-%m-%d')
     else:
-        start_date = date(2022, 9, 15)
+        start_date = date(2022, 9, 11)
         git_owner = 'grafana'
         git_repo = 'grafana'
 
@@ -116,7 +122,15 @@ class GitLoader:
         self.data += resp.json()["Results"]
 
     def get_pull_requests_data(self, start_date: date, per_page: int):
-        # start_date = start_date.strftime("%Y-%m-%d")
+        '''
+        get all data per specific date
+        handle pagination
+        :param start_date:
+        :param per_page:
+        :return:
+        '''
+
+        print(f'get_pull_requests_data:start_date:{start_date}')
 
         next_page = False
         last_page = False
@@ -137,6 +151,13 @@ class GitLoader:
 
     @staticmethod
     def get_pull_requests(results, filter_list, start_date):
+        '''
+        filter pull_request in specific date
+        :param results:
+        :param filter_list:
+        :param start_date:
+        :return:
+        '''
 
         # List object
         _results = results.json()
@@ -183,12 +204,18 @@ class GitLoader:
 
     def save_result_to_s3(self, layer, owner, repo, file_name, start_date, github_type='pull_request'):
 
-        bucket = 'git-analytics'
+        bucket = 'de-github-analytics-dev'
         key = f'{layer}/{github_type}/owner={owner}/repo={repo}/date={start_date}/{file_name}'
         with open(file_name, 'rb') as data:
             self.s3_client.upload_fileobj(data, bucket, key)
 
     def subtract_dates(self, start_date, end_date):
+        '''
+        calculate date diff in seconds
+        :param start_date:
+        :param end_date:
+        :return:
+        '''
         seconds = 0
         if start_date is None or end_date is None:
             return seconds
@@ -246,6 +273,7 @@ if __name__ == "__main__":
     # end_date = date(2022, 9, 13)
     # git_owner = 'grafana'
     # git_repo = 'grafana'
+
 
     args = load_glue_contex()
 

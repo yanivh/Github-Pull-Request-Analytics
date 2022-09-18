@@ -17,8 +17,8 @@ CREATE VIEW view_tickets_open AS
 
 SELECT state,
         date,
-        sum ((CAST(time_cretead_to_update_seconds  AS double) / 86400)) as days_time_open
-        -- ,"create_at"
+        sum ((CAST(time_cretead_to_update_seconds  AS double) / 86400)) as days_time_open,
+        count(*) as pr_count
 FROM "git"."pull_requests"
 where state ='open'
 group by date,state
