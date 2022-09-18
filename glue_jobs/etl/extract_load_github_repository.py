@@ -26,7 +26,7 @@ def load_glue_contex():
                 yesterday = datetime.today() - timedelta(days=1)
                 args['start_date'] = yesterday.strftime('%Y-%m-%d')
     else:
-        start_date = date(2022, 9, 11)
+        start_date = date(2022, 9, 14)
         git_owner = 'grafana'
         git_repo = 'grafana'
 
