@@ -65,6 +65,25 @@ LOCATION
 
 - **serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
 
+
+**restrict data access for given users/departments**
+to support the requierment that each of the devprtments like test managers, release managers, product managers, developers, etc can view relevant data , we can use built in AWS IAM Access policy , and attached it per deprtment.
+example policy that limiting access to a specific database in the Data Catalog,
+<pre>
+{
+   "Effect": "Allow",
+   "Action": [
+      "glue:GetDatabase", 
+      "glue:GetDatabases"
+   ],
+   "Resource": [
+     "arn:aws:glue:us-east-1:123456789012:catalog",
+     "arn:aws:glue:us-east-1:123456789012:git/pull_requests_vm_release_mangers"
+   ]
+}
+</pre>
+
+
 ## Get started
 Setup local environment
 1. Install `pyenv` - [guide](https://faun.pub/pyenv-multi-version-python-development-on-mac-578736fb91aa)
