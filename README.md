@@ -5,7 +5,7 @@ GitHub Anlytics, pull new data about the Grafana repository into a database.
 - **GitHub API:** using GitHub's REST API v3, solution pulled data by query againt **"Issues"** endpoints, **"Issues"** endpoints may return both issues and pull requests in the response, solution identify pull requests by the **pull_request** key.<br>
 solution use and TokenAPI that store in **AWs secret manger** called **Secretgithubapi**
 
-- **infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations 
+- **Infrastructure as a code:** Infrastructure as Code (IaC) is the managing and provisioning of infrastructure through code instead of through manual processes. With IaC, configuration files are created that contain your infrastructure specifications, which makes it easier to edit and distribute configurations 
 <br> <br> **Cloud resources** :
 <pre>
  IAC/S3 -  datalake storage
@@ -63,10 +63,10 @@ LOCATION
  glue_jobs/SQL/DDM -  CREATE VIEW sql statements
 </pre>
 
-- **serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
+- **Serverless BI service:** Amazon **QuickSight** has a serverless architecture that automatically scales to tens of thousands of users without the need to setup, configure, or manage your own servers.
 
 
-**restrict data access for given users/departments**
+**Restrict data access for given users/departments**
 to support the requierment that each of the devprtments like test managers, release managers, product managers, developers, etc can view relevant data , we can use built in AWS IAM Access policy , and attached it per deprtment.
 example policy that limiting access to a specific database in the Data Catalog,
 <pre>
