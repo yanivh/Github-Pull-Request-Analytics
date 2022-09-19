@@ -1,4 +1,4 @@
-# Github Analytics
+# GitHub Analytics
 
 GitHub Anlytics, pull new data about the Grafana repository into a database.
 
