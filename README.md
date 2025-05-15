@@ -96,8 +96,8 @@ Set AWA Access
 2.  enter account details
 
 <pre>
-AWS Access Key ID [None]: AKN7EXAMPLE
-AWS Secret Access Key [None]: bPxRfiCYEXAMPLEKEY
+AWS Access Key ID [None]: Bl
+AWS Secret Access Key [None]: LEKEY
 Default region name [None]: us-west-2
 Default output format [None]: json
 </pre>
